@@ -1,7 +1,7 @@
 import q2m from "query-to-mongo"
 import express, { Request, Response, NextFunction } from "express"
 import passport from "passport"
-import UserModel from "./schema"
+import Model, { User } from "./schema"
 import createError from "http-errors"
 import { validationResult } from "express-validator"
 import mongoose from "mongoose"
@@ -10,7 +10,6 @@ import { JWTAuthMiddleware } from "../../auth/middlewares"
 import { checkIfHost, checkUserEditPrivileges } from "../../auth/admin"
 import { LoginValidator, UserValidator } from "./validator"
 import { refreshTokens, JWTAuthenticate } from "../../auth/tools"
-import { User } from "../../interfaces"
 
 const usersRouter = express.Router()
 
@@ -18,7 +17,7 @@ usersRouter.post("/register", UserValidator, async (req: Request, res: Response,
     try {
         const errors = validationResult(req)
         if (errors.isEmpty()) {
-            const entry = new UserModel(req.body)
+            const entry = new Model(req.body)
             const result = await entry.save()
             res.status(201).send({ id: result._id, role: result.role })
         } else next(createError(400, errors.mapped()))
@@ -32,18 +31,13 @@ interface ITokens {
     refreshToken: string
 }
 
-interface IMongoUser extends User {
-    save: Function
-    deleteOne: Function
-}
-
 usersRouter.post("/login", LoginValidator, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const errors = validationResult(req)
         if (errors.isEmpty()) {
             const { email, password } = req.body
             const tokens = req.user as ITokens
-            const user = await UserModel.checkCredentials(email, password)
+            const user = await Model.checkCredentials(email, password)
 
             if (user) {
                 const { accessToken, refreshToken } = await JWTAuthenticate(user)
@@ -72,7 +66,7 @@ usersRouter.get("/login/oauth/google/redirect", passport.authenticate("google"),
 
 usersRouter.post("/logout", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        let user = req.user as IMongoUser
+        let user = req.user as User
         user.refreshToken = undefined
         await user.save()
         res.status(205).send("Logged out")
@@ -96,9 +90,9 @@ usersRouter.post("/refreshToken", async (req, res, next) => {
 usersRouter.get("/", JWTAuthMiddleware, async (req, res, next) => {
     try {
         const query = q2m(req.query)
-        const total = await UserModel.countDocuments(query.criteria)
+        const total = await Model.countDocuments(query.criteria)
         const limit = 25
-        const result = await UserModel.find(query.criteria)
+        const result = await Model.find(query.criteria)
             .sort(query.options.sort)
             .skip(query.options.skip || 0)
             .limit(query.options.limit && query.options.limit < limit ? query.options.limit : limit)
@@ -120,8 +114,8 @@ usersRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
 usersRouter.get("/me/accommodations", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
     try {
         const user = req.user as User
-        const result = await UserModel.findById(user._id).populate("accommodations")
-        res.status(200).send(result.accommodations)
+        const result = await Model.findById(user._id).populate("accommodations")
+        res.status(200).send(result!.accommodations)
     } catch (error) {
         next(error)
     }
@@ -129,7 +123,7 @@ usersRouter.get("/me/accommodations", JWTAuthMiddleware, checkIfHost, async (req
 
 usersRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        const user = req.user as IMongoUser
+        const user = req.user as User
         await user.deleteOne()
         res.status(205).send("User terminated")
     } catch (error) {
@@ -139,7 +133,7 @@ usersRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
 
 usersRouter.put("/me", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        let user = req.user as IMongoUser
+        let user = req.user as User
         req.body.name ? (user.firstname = req.body.name) : null
         req.body.surname ? (user.surname = req.body.surname) : null
         req.body.email ? (user.email = req.body.email) : null
@@ -156,7 +150,7 @@ usersRouter.get("/:id", async (req, res, next) => {
     try {
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))
         else {
-            const result = await UserModel.findById(req.params.id)
+            const result = await Model.findById(req.params.id)
             if (!result) next(createError(404, `ID ${req.params.id} was not found`))
             else res.status(200).send(result)
         }
@@ -169,7 +163,7 @@ usersRouter.get("/:id/accommodations", JWTAuthMiddleware, checkIfHost, async (re
     try {
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))
         else {
-            const result = await UserModel.findById(req.params.id).populate("accommodations")
+            const result = await Model.findById(req.params.id).populate("accommodations")
             if (!result) next(createError(404, `ID ${req.params.id} was not found`))
             else res.status(200).send(result.accommodations)
         }
@@ -182,7 +176,7 @@ usersRouter.delete("/:id", JWTAuthMiddleware, checkUserEditPrivileges, async (re
     try {
         let result
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))
-        else result = await UserModel.findByIdAndDelete(req.params.id, { useFindAndModify: false })
+        else result = await Model.findByIdAndDelete(req.params.id, { useFindAndModify: false })
 
         if (result) res.status(200).send("User Terminated")
         else next(createError(404, `ID ${req.params.id} was not found`))
@@ -195,7 +189,7 @@ usersRouter.put("/:id", JWTAuthMiddleware, checkUserEditPrivileges, async (req, 
     try {
         let result
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))
-        else result = await UserModel.findByIdAndUpdate(req.params.id, req.body, { runValidators: true, new: true, useFindAndModify: false })
+        else result = await Model.findByIdAndUpdate(req.params.id, req.body, { runValidators: true, new: true, useFindAndModify: false })
 
         if (!result) next(createError(404, `ID ${req.params.id} was not found`))
         else res.status(200).send(result)

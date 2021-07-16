@@ -1,7 +1,7 @@
 import createError from "http-errors"
 import AccommodationModel from "../services/accomodations/schema"
 import { Request, Response, NextFunction } from "express"
-import { User } from "../interfaces"
+import { User } from "../services/users/schema"
 
 type Route = (req: Request, res: Response, next: NextFunction) => void
 
@@ -26,7 +26,7 @@ export const checkAccommodationEditPrivileges: Route = async (req, res, next) =>
 }
 
 export const checkIfHost: Route = (req, res, next) => {
-    const user = user as User
+    const user = req.user as User
     if (user.role === "Host") next()
     else next(createError(403))
 }
