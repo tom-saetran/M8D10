@@ -13,7 +13,6 @@ var accomodations_1 = __importDefault(require("./services/accomodations"));
 var destinations_1 = __importDefault(require("./services/destinations"));
 var errorHandlers_1 = require("./errorHandlers");
 var server = express_1.default();
-var port = process.env.PORT || 3001;
 // MIDDLEWARES
 server.use(cors_1.default({ origin: "localhost", credentials: true }));
 server.use(express_1.default.json());

@@ -10,7 +10,6 @@ import destinationsRoutes from "./services/destinations"
 import { unAuthorizedHandler, forbiddenHandler, catchAllHandler, error400 } from "./errorHandlers"
 
 const server = express()
-const port = process.env.PORT || 3001
 
 // MIDDLEWARES
 server.use(cors({ origin: "localhost", credentials: true }))
