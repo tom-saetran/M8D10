@@ -6,7 +6,7 @@ import UserModel from "../users/schema.js"
 import mongoose from "mongoose"
 const { isValidObjectId } = mongoose
 import { JWTAuthMiddleware } from "../../auth/middlewares.js"
-import { checkIfHost, checkPostEditPrivileges } from "../../auth/admin.js"
+import { checkAccommodationEditPrivileges, checkIfHost } from "../../auth/admin.js"
 
 const accommodationsRouter = express.Router()
 
@@ -58,7 +58,7 @@ accommodationsRouter.get("/:id", JWTAuthMiddleware, async (req, res, next) => {
     }
 })
 
-accommodationsRouter.delete("/:id", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
+accommodationsRouter.delete("/:id", JWTAuthMiddleware, checkAccommodationEditPrivileges, checkIfHost, async (req, res, next) => {
     try {
         let result
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))
@@ -75,7 +75,7 @@ accommodationsRouter.delete("/:id", JWTAuthMiddleware, checkIfHost, async (req, 
     }
 })
 
-accommodationsRouter.put("/:id", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
+accommodationsRouter.put("/:id", JWTAuthMiddleware, checkAccommodationEditPrivileges, checkIfHost, async (req, res, next) => {
     try {
         let result
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))

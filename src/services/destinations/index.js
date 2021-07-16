@@ -5,7 +5,8 @@ import LocationModel from "./schema.js"
 import createError from "http-errors"
 import console from "console"
 import { JWTAuthMiddleware } from "../../auth/middlewares.js"
-import { checkIfHost } from "../../auth/admin.js"
+import { checkIfAdmin, checkIfHost } from "../../auth/admin.js"
+import { LocationValidator } from "./validator.js"
 
 const destinationsRouter = express.Router()
 
@@ -18,12 +19,15 @@ destinationsRouter.get("/", JWTAuthMiddleware, async (req, res, next) => {
     }
 })
 
-destinationsRouter.post("/", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
+destinationsRouter.post("/", LocationValidator, JWTAuthMiddleware, checkIfAdmin, checkIfHost, async (req, res, next) => {
     try {
-        const result = new LocationModel(req.body)
-        console.log(result)
-        if (await result.save()) res.status(201).send(result)
-        else next(createError(400, "Error saving data!"))
+        const errors = validationResult(req)
+        if (errors.isEmpty()) {
+            const result = new LocationModel(req.body)
+            console.log(result)
+            if (await result.save()) res.status(201).send(result)
+            else next(createError(400, "Error saving data!"))
+        } else next(createError(400, errors.mapped()))
     } catch (error) {
         next(createError(400, error))
     }
@@ -43,7 +47,7 @@ destinationsRouter.get("/:id", JWTAuthMiddleware, async (req, res, next) => {
     }
 })
 
-destinationsRouter.put("/:id", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
+destinationsRouter.put("/:id", JWTAuthMiddleware, checkIfAdmin, checkIfHost, async (req, res, next) => {
     try {
         let result
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))
@@ -61,7 +65,7 @@ destinationsRouter.put("/:id", JWTAuthMiddleware, checkIfHost, async (req, res, 
     }
 })
 
-destinationsRouter.delete("/:id", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
+destinationsRouter.delete("/:id", JWTAuthMiddleware, checkIfAdmin, checkIfHost, async (req, res, next) => {
     try {
         let result
         if (!isValidObjectId(req.params.id)) next(createError(400, `ID ${req.params.id} is invalid`))

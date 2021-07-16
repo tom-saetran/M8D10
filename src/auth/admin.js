@@ -1,7 +1,7 @@
 import createError from "http-errors"
-import BlogModel from "../services/accomodations/schema.js"
+import AccommodationModel from "../services/accomodations/schema.js"
 
-export const adminOnly = (req, res, next) => {
+export const checkIfAdmin = (req, res, next) => {
     if (req.user.role === "Admin") next()
     else next(createError(403))
 }
@@ -11,9 +11,9 @@ export const checkUserEditPrivileges = (req, res, next) => {
     else next(createError(403))
 }
 
-export const checkPostEditPrivileges = async (req, res, next) => {
-    const { authors } = await BlogModel.findById(req.params.id)
-    if (authors.filter(id => id === req.user._id)) next()
+export const checkAccommodationEditPrivileges = async (req, res, next) => {
+    const { host } = await AccommodationModel.findById(req.params.id)
+    if (host.id === req.user._id) next()
     if (req.user.role === "Admin") next()
     else next(createError(403))
 }
