@@ -1,12 +1,13 @@
-import express from "express"
+import express, { Request, Response, NextFunction } from "express"
 import mongoose from "mongoose"
 const { isValidObjectId } = mongoose
-import LocationModel from "./schema.js"
+import LocationModel from "./schema"
 import createError from "http-errors"
 import console from "console"
-import { JWTAuthMiddleware } from "../../auth/middlewares.js"
-import { checkIfAdmin, checkIfHost } from "../../auth/admin.js"
-import { LocationValidator } from "./validator.js"
+import { JWTAuthMiddleware } from "../../auth/middlewares"
+import { checkIfAdmin, checkIfHost } from "../../auth/admin"
+import { LocationValidator } from "./validator"
+import { validationResult } from "express-validator"
 
 const destinationsRouter = express.Router()
 
@@ -19,7 +20,7 @@ destinationsRouter.get("/", JWTAuthMiddleware, async (req, res, next) => {
     }
 })
 
-destinationsRouter.post("/", LocationValidator, JWTAuthMiddleware, checkIfAdmin, checkIfHost, async (req, res, next) => {
+destinationsRouter.post("/", LocationValidator, JWTAuthMiddleware, checkIfAdmin, checkIfHost, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const errors = validationResult(req)
         if (errors.isEmpty()) {

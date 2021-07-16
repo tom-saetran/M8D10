@@ -1,5 +1,6 @@
 import mongoose from "mongoose"
 import bcrypt from "bcrypt"
+import { User } from "../../interfaces"
 
 const { Schema, model } = mongoose
 
@@ -17,8 +18,13 @@ const UserSchema = new Schema(
     { timestamps: true }
 )
 
+interface ISaveUser {
+    password: string
+    isModified: Function
+}
+
 UserSchema.pre("save", async function (next) {
-    const newUser = this
+    const newUser: ISaveUser = this as any
     const plainPw = newUser.password
     if (newUser.isModified("password")) newUser.password = await bcrypt.hash(plainPw, 14)
 
@@ -27,7 +33,7 @@ UserSchema.pre("save", async function (next) {
 
 UserSchema.methods.toJSON = function () {
     const schema = this
-    const object = schema.toObject()
+    const object: User = schema.toObject() as any
     delete object.password
     delete object.refreshToken
     delete object.__v

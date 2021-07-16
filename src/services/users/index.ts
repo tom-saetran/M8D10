@@ -1,19 +1,20 @@
 import q2m from "query-to-mongo"
-import express from "express"
+import express, { Request, Response, NextFunction } from "express"
 import passport from "passport"
-import UserModel from "./schema.js"
+import UserModel from "./schema"
 import createError from "http-errors"
 import { validationResult } from "express-validator"
 import mongoose from "mongoose"
 const { isValidObjectId } = mongoose
-import { JWTAuthMiddleware } from "../../auth/middlewares.js"
-import { checkIfHost, checkUserEditPrivileges } from "../../auth/admin.js"
-import { LoginValidator, UserValidator } from "./validator.js"
-import { refreshTokens, JWTAuthenticate } from "../../auth/tools.js"
+import { JWTAuthMiddleware } from "../../auth/middlewares"
+import { checkIfHost, checkUserEditPrivileges } from "../../auth/admin"
+import { LoginValidator, UserValidator } from "./validator"
+import { refreshTokens, JWTAuthenticate } from "../../auth/tools"
+import { User } from "../../interfaces"
 
 const usersRouter = express.Router()
 
-usersRouter.post("/register", UserValidator, async (req, res, next) => {
+usersRouter.post("/register", UserValidator, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const errors = validationResult(req)
         if (errors.isEmpty()) {
@@ -26,18 +27,29 @@ usersRouter.post("/register", UserValidator, async (req, res, next) => {
     }
 })
 
-usersRouter.post("/login", LoginValidator, async (req, res, next) => {
+interface ITokens {
+    accessToken: string
+    refreshToken: string
+}
+
+interface IMongoUser extends User {
+    save: Function
+    deleteOne: Function
+}
+
+usersRouter.post("/login", LoginValidator, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const errors = validationResult(req)
         if (errors.isEmpty()) {
             const { email, password } = req.body
+            const tokens = req.user as ITokens
             const user = await UserModel.checkCredentials(email, password)
 
             if (user) {
                 const { accessToken, refreshToken } = await JWTAuthenticate(user)
 
-                res.cookie("accessToken", req.user.tokens.accessToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
-                res.cookie("refreshToken", req.user.tokens.refreshToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
+                res.cookie("accessToken", tokens.accessToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
+                res.cookie("refreshToken", tokens.refreshToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
                 res.status(200).redirect("http://localhost:666/")
             } else next(createError(401, "Wrong credentials provided"))
         } else next(createError(400, errors.mapped()))
@@ -49,8 +61,9 @@ usersRouter.post("/login", LoginValidator, async (req, res, next) => {
 usersRouter.get("/login/oauth/google/login", passport.authenticate("google", { scope: ["profile", "email"] }))
 usersRouter.get("/login/oauth/google/redirect", passport.authenticate("google"), async (req, res, next) => {
     try {
-        res.cookie("accessToken", req.user.tokens.accessToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
-        res.cookie("refreshToken", req.user.tokens.refreshToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
+        const tokens = req.user as ITokens
+        res.cookie("accessToken", tokens.accessToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
+        res.cookie("refreshToken", tokens.refreshToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
         res.status(200).redirect("http://localhost:666/")
     } catch (error) {
         next(error)
@@ -59,9 +72,9 @@ usersRouter.get("/login/oauth/google/redirect", passport.authenticate("google"),
 
 usersRouter.post("/logout", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        const _ = await refreshTokens(req.user.refreshToken) // <= How to invalidate tokens? This does not invalidate the current accessToken
-        req.user.refreshToken = undefined
-        await req.user.save()
+        let user = req.user as IMongoUser
+        user.refreshToken = undefined
+        await user.save()
         res.status(205).send("Logged out")
     } catch (error) {
         next(error)
@@ -106,7 +119,8 @@ usersRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
 
 usersRouter.get("/me/accommodations", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
     try {
-        const result = await UserModel.findById(req.user._id).populate("accommodations")
+        const user = req.user as User
+        const result = await UserModel.findById(user._id).populate("accommodations")
         res.status(200).send(result.accommodations)
     } catch (error) {
         next(error)
@@ -115,8 +129,9 @@ usersRouter.get("/me/accommodations", JWTAuthMiddleware, checkIfHost, async (req
 
 usersRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        await req.user.deleteOne()
-        res.status().send("User terminated")
+        const user = req.user as IMongoUser
+        await user.deleteOne()
+        res.status(205).send("User terminated")
     } catch (error) {
         next(error)
     }
@@ -124,11 +139,12 @@ usersRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
 
 usersRouter.put("/me", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        req.body.name ? (req.user.name = req.body.name) : null
-        req.body.surname ? (req.user.surname = req.body.surname) : null
-        req.body.email ? (req.user.email = req.body.email) : null
+        let user = req.user as IMongoUser
+        req.body.name ? (user.firstname = req.body.name) : null
+        req.body.surname ? (user.surname = req.body.surname) : null
+        req.body.email ? (user.email = req.body.email) : null
 
-        const result = await req.user.save()
+        const result = await user.save()
 
         res.status(200).send(result)
     } catch (error) {

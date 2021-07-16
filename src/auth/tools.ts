@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken"
-import UserModel from "../services/users/schema.js"
+import { User } from "../interfaces"
+import UserModel from "../services/users/schema"
 
 export const JWTAuthenticate = async user => {
     const accessToken = await generateJWT({ _id: user._id })

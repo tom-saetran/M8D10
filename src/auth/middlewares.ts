@@ -1,8 +1,9 @@
+import { NextFunction, Request, Response } from "express"
 import createError from "http-errors"
-import UserModel from "../services/users/schema.js"
-import { verifyToken } from "./tools.js"
+import UserModel from "../services/users/schema"
+import { verifyToken } from "./tools"
 
-export const JWTAuthMiddleware = async (req, res, next) => {
+export const JWTAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.cookies.accessToken) next(createError(401, "No token provided"))
     else {
         try {
