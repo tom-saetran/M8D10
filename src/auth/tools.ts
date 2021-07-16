@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken"
 import UserModel, { User } from "../services/users/schema"
 
+process.env.TS_NODE_DEV && require("dotenv").config()
+
 const { JWT_SECRET, JWT_REFRESH_SECRET } = process.env
 if (!JWT_SECRET || !JWT_REFRESH_SECRET) throw new Error("Environment variables unreachable.")
 

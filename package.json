@@ -4,8 +4,8 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "compile": "tsc && node app.js",
-        "dev": "nodemon -e ts --exec 'npm run compile'",
+        "compile": "tsc && node -r dotenv/config ./build/index.js",
+        "dev": "nodemon -e ts --exec npm run compile",
         "tsdev": "ts-node-dev ./src"
     },
     "license": "ISC",
