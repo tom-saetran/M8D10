@@ -10,10 +10,5 @@ if (!MONGO_CONNECTION) throw new Error("No Mongo DB specified")
 
 mongoose
     .connect(MONGO_CONNECTION, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true })
-    .then(() => {
-        server.listen(port, () => {
-            console.table(list(server))
-            console.log("Server listening on port", port)
-        })
-    })
+    .then(() => server.listen(port, () => {}))
     .catch(e => console.log(e))

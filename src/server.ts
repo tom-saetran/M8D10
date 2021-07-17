@@ -3,7 +3,7 @@ import express from "express"
 import passport from "passport"
 import oauth from "./auth/oauth"
 import cookieParser from "cookie-parser"
-import listEndpoints from "express-list-endpoints"
+import endpoints from "express-list-endpoints"
 import usersRoutes from "./services/users"
 import accommodationsRoutes from "./services/accomodations"
 import destinationsRoutes from "./services/destinations"
@@ -28,6 +28,6 @@ server.use(unAuthorizedHandler)
 server.use(forbiddenHandler)
 server.use(catchAllHandler)
 
-console.table(listEndpoints(server))
+console.table(endpoints(server))
 
 export default server

@@ -38,40 +38,57 @@ const UserSchema = new Schema<IMongoUser, Model<IUser>>(
 )
 */
 
-import { Document, Model, model, Schema } from "mongoose"
+import { Date, Document, Model, model, Schema } from "mongoose"
 import bcrypt from "bcrypt"
+import { hashPassword } from "../../auth/tools"
 
 // Schema
-const UserSchema = new Schema<User, UserModel>(
+const UserSchema = new Schema<BaseUser, UserModel>(
     {
         firstname: { type: String, required: true },
         surname: { type: String, required: true },
         email: { type: String, required: true, unique: true },
         password: { type: String },
         role: { type: String, required: true, enum: ["Host", "Guest"], default: "Guest" },
-        accommodations: [{ type: Schema.Types.ObjectId, ref: "Accommodation", required: true }],
+        accommodations: [{ type: Schema.Types.ObjectId, ref: "Accommodation", default: [] }],
         refreshToken: { type: String },
         googleOAuth: { type: String }
     },
     { timestamps: true }
 )
 
-export interface User extends Document {
+export interface User {
     firstname: string
-    surname?: string
+    surname: string
     email: string
     password?: string
     role: "Guest" | "Host" | "Admin"
-    accommodations: Array<string>
+    accommodations?: Array<string>
     refreshToken?: string
     googleOAuth?: string
 }
 
-interface UserModel extends Model<User> {
-    checkCredentials(email: string, plainPw: string): Promise<User>
+export interface BaseUser extends User, Document {
+    _id: string
+    createdAt: string
+    updatedAt: string
 }
 
-UserSchema.statics.checkCredentials = async function (this: Model<User>, email: string, plainPw: string) {
+interface UserModel extends Model<BaseUser> {
+    checkCredentials(email: string, plainPw: string): Promise<BaseUser>
+}
+
+UserSchema.methods.toJSON = function () {
+    const schema = this
+    const object = schema.toObject()
+
+    delete object.password
+    delete object.__v
+
+    return object
+}
+
+UserSchema.statics.checkCredentials = async function (this: Model<BaseUser>, email: string, plainPw: string) {
     const user = await this.findOne({ email })
     if (user) {
         const hashedPw = user.password
@@ -84,12 +101,12 @@ UserSchema.statics.checkCredentials = async function (this: Model<User>, email: 
     return null
 }
 
-UserSchema.pre<User>("save", async function (next) {
+UserSchema.pre<BaseUser>("save", async function (next) {
     const newUser = this
-    const plainPw = newUser.password
-    if (plainPw && this.isModified("password")) newUser.password = await bcrypt.hash(plainPw, 14)
+    const plaintextPassword = newUser.password
+    if (plaintextPassword && this.isModified("password")) newUser.password = await hashPassword(plaintextPassword)
 
     next()
 })
 
-export default model<User, UserModel>("User", UserSchema)
+export default model<BaseUser, UserModel>("User", UserSchema)

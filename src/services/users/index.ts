@@ -1,15 +1,16 @@
 import q2m from "query-to-mongo"
 import express, { Request, Response, NextFunction } from "express"
 import passport from "passport"
-import Model, { User } from "./schema"
+import bcrypt from "bcrypt"
+import Model, { BaseUser } from "./schema"
 import createError from "http-errors"
 import { validationResult } from "express-validator"
 import mongoose from "mongoose"
 const { isValidObjectId } = mongoose
 import { JWTAuthMiddleware } from "../../auth/middlewares"
 import { checkIfHost, checkUserEditPrivileges } from "../../auth/admin"
-import { LoginValidator, UserValidator } from "./validator"
-import { refreshTokens, JWTAuthenticate } from "../../auth/tools"
+import { LoginValidator, UserValidator, UserEditValidator } from "./validator"
+import { refreshTokens, JWTAuthenticate, hashPassword } from "../../auth/tools"
 
 const usersRouter = express.Router()
 
@@ -19,12 +20,26 @@ usersRouter.post("/register", UserValidator, async (req: Request, res: Response,
         if (errors.isEmpty()) {
             const entry = new Model(req.body)
             const result = await entry.save()
-            res.status(201).send({ id: result._id, role: result.role })
+
+            const { email, password } = req.body
+            const user = await Model.checkCredentials(email, password)
+
+            if (user) {
+                const { accessToken, refreshToken } = await JWTAuthenticate(user)
+
+                res.cookie("accessToken", accessToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
+                res.cookie("refreshToken", refreshToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
+                res.redirect("http://localhost:666/")
+            } else next(createError(500, "Something went wrong while registering"))
         } else next(createError(400, errors.mapped()))
     } catch (error) {
         next(error)
     }
 })
+
+usersRouter.get("/register", async (req, res, next) => res.status(404).send())
+usersRouter.put("/register", async (req, res, next) => res.status(404).send())
+usersRouter.delete("/register", async (req, res, next) => res.status(404).send())
 
 interface ITokens {
     accessToken: string
@@ -66,7 +81,7 @@ usersRouter.get("/login/oauth/google/redirect", passport.authenticate("google"),
 
 usersRouter.post("/logout", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        let user = req.user as User
+        let user = req.user as BaseUser
         user.refreshToken = undefined
         await user.save()
         res.status(205).send("Logged out")
@@ -113,7 +128,7 @@ usersRouter.get("/me", JWTAuthMiddleware, async (req, res, next) => {
 
 usersRouter.get("/me/accommodations", JWTAuthMiddleware, checkIfHost, async (req, res, next) => {
     try {
-        const user = req.user as User
+        const user = req.user as BaseUser
         const result = await Model.findById(user._id).populate("accommodations")
         res.status(200).send(result!.accommodations)
     } catch (error) {
@@ -123,7 +138,7 @@ usersRouter.get("/me/accommodations", JWTAuthMiddleware, checkIfHost, async (req
 
 usersRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
     try {
-        const user = req.user as User
+        const user = req.user as BaseUser
         await user.deleteOne()
         res.status(205).send("User terminated")
     } catch (error) {
@@ -131,16 +146,21 @@ usersRouter.delete("/me", JWTAuthMiddleware, async (req, res, next) => {
     }
 })
 
-usersRouter.put("/me", JWTAuthMiddleware, async (req, res, next) => {
+usersRouter.put("/me", JWTAuthMiddleware, UserEditValidator, async (req: Request, res: Response, next: NextFunction) => {
+    const { firstname, surname, email } = req.body
     try {
-        let user = req.user as User
-        req.body.name ? (user.firstname = req.body.name) : null
-        req.body.surname ? (user.surname = req.body.surname) : null
-        req.body.email ? (user.email = req.body.email) : null
+        const errors = validationResult(req)
+        if (errors.isEmpty()) {
+            let user = req.user as BaseUser
+            user.firstname = firstname
+            user.surname = surname
+            user.email = email
+            //user.password = await hashPassword(req.body.password) // <= goes to own route in next revision
 
-        const result = await user.save()
+            const result = await user.save()
 
-        res.status(200).send(result)
+            res.status(200).send(result)
+        } else next(createError(400, errors.mapped()))
     } catch (error) {
         next(error)
     }

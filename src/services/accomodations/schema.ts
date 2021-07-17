@@ -13,6 +13,14 @@ const AccommodationSchema = new Schema(
     { timestamps: true }
 )
 
+export interface IAccommodation {
+    name: string
+    description: string
+    location: string
+    host: string
+    maxGuests: number
+}
+
 AccommodationSchema.methods.toJSON = function () {
     const schema = this
     const object = schema.toObject()
