@@ -37,10 +37,6 @@ usersRouter.post("/register", UserValidator, async (req: Request, res: Response,
     }
 })
 
-usersRouter.get("/register", async (req, res, next) => res.status(404).send())
-usersRouter.put("/register", async (req, res, next) => res.status(404).send())
-usersRouter.delete("/register", async (req, res, next) => res.status(404).send())
-
 interface ITokens {
     accessToken: string
     refreshToken: string
@@ -59,7 +55,7 @@ usersRouter.post("/login", LoginValidator, async (req: Request, res: Response, n
 
                 res.cookie("accessToken", tokens.accessToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
                 res.cookie("refreshToken", tokens.refreshToken, { httpOnly: true /*sameSite: "lax", secure: true*/ })
-                res.status(200).redirect("http://localhost:666/")
+                res.status(200).redirect(req.baseUrl)
             } else next(createError(401, "Wrong credentials provided"))
         } else next(createError(400, errors.mapped()))
     } catch (error) {
@@ -105,14 +101,14 @@ usersRouter.post("/refreshToken", async (req, res, next) => {
 usersRouter.get("/", JWTAuthMiddleware, async (req, res, next) => {
     try {
         const query = q2m(req.query)
-        const total = await Model.countDocuments(query.criteria)
-        const limit = 25
+        const pages = await Model.countDocuments(query.criteria)
+        const maxLimit = 10
         const result = await Model.find(query.criteria)
             .sort(query.options.sort)
             .skip(query.options.skip || 0)
-            .limit(query.options.limit && query.options.limit < limit ? query.options.limit : limit)
-
-        res.status(200).send({ links: query.links("/users", total), total, result })
+            .limit(query.options.limit && query.options.limit < maxLimit ? query.options.limit : maxLimit)
+        const response = result.map(entry => ({ _id: entry._id, firstname: entry.firstname, surname: entry.surname }))
+        res.status(200).send({ navigation: query.links("/users", pages), pages, response })
     } catch (error) {
         next(error)
     }

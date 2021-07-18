@@ -2,8 +2,6 @@ import supertest from "supertest"
 import server from "../server"
 import mongoose from "mongoose"
 import dotenv from "dotenv"
-import { IAccommodation } from "../services/accomodations/schema"
-import { ILocation } from "../services/destinations/schema"
 import { User, BaseUser } from "../services/users/schema"
 dotenv.config()
 const request = supertest(server)
@@ -20,7 +18,7 @@ var user: BaseUser
 beforeAll(() => mongoose.connect(MONGO_CONNECTION!, { useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true }))
 afterAll(done => mongoose.connection.dropDatabase(() => mongoose.connection.close(() => done())))
 
-describe("Shared behaviour between all user roles", () => {
+describe("Guest user tests", () => {
     describe("POST /users/register", () => {
         const validRegister: User = {
             firstname: "Test",
@@ -73,7 +71,6 @@ describe("Shared behaviour between all user roles", () => {
         it("should return 200 with a valid cookie", async () => {
             const response = await request.get("/users/me").set("Cookie", [accessToken])
             user = response.body
-            console.log(user)
             expect(response.status).toBe(200)
         })
     })
@@ -112,6 +109,25 @@ describe("Shared behaviour between all user roles", () => {
 
         it("should return 200 with a valid cookie, and with a valid payload", async () => {
             const response = await request.put("/users/me").set("Cookie", [accessToken]).send(validEdit)
+            expect(response.status).toBe(200)
+        })
+    })
+
+    describe("GET /users/", () => {
+        it("should return 400 without any cookies", async () => {
+            const response = await request.get("/users/")
+            expect(response.status).toBe(400)
+        })
+
+        it("should return 403 with an invalid cookie", async () => {
+            const response = await request.get("/users/").set("Cookie", [`accessToken=HelloWorld`])
+            expect(response.status).toBe(403)
+        })
+
+        it("should return 200 with a valid cookie", async () => {
+            const response = await request.get("/users/").set("Cookie", [accessToken])
+            const { body } = response
+            console.log(body)
             expect(response.status).toBe(200)
         })
     })

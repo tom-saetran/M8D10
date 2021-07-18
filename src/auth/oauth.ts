@@ -17,7 +17,7 @@ const GoogleStrat = new Strategy(
     {
         clientID: process.env.GOOGLE_CLIENT_ID as string,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-        callbackURL: "http://localhost:666/users/login/oauth/google/redirect"
+        callbackURL: "/users/login/oauth/google/redirect"
     },
     async (accessToken, refreshToken, _profile, next) => {
         const profile = _profile as IProfile

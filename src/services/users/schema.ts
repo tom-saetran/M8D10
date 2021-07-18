@@ -1,46 +1,7 @@
-/*import { Document, Schema, model, Model } from "mongoose"
-import bcrypt from "bcrypt"
-
-interface User {
-    firstName: string
-    surname: string
-    email: string
-    password?: string
-    role: "Guest" | "Host" | "Admin"
-    accommodations: Array<string>
-    refreshToken?: string
-    googleOAuth?: string
-}
-
-interface IMongoUser extends User, Document {
-    createdAt: string
-    editedAt: string
-    _id: string
-    __v?: 0
-}
-
-export interface IUser extends IMongoUser {
-    checkCredentials(email: string, plainPw: string): Promise<IMongoUser>
-}
-
-const UserSchema = new Schema<IMongoUser, Model<IUser>>(
-    {
-        firstname: { type: String, required: true },
-        surname: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
-        password: { type: String },
-        role: { type: String, required: true, enum: ["Host", "Guest"], default: "Guest" },
-        accommodations: [{ type: Schema.Types.ObjectId, ref: "Accommodation", required: true }],
-        refreshToken: { type: String },
-        googleOAuth: { type: String }
-    },
-    { timestamps: true }
-)
-*/
-
-import { Date, Document, Model, model, Schema } from "mongoose"
+import { Document, Model, model, Schema } from "mongoose"
 import bcrypt from "bcrypt"
 import { hashPassword } from "../../auth/tools"
+import { BaseAccommodations } from "../accomodations/schema"
 
 // Schema
 const UserSchema = new Schema<BaseUser, UserModel>(
@@ -49,7 +10,7 @@ const UserSchema = new Schema<BaseUser, UserModel>(
         surname: { type: String, required: true },
         email: { type: String, required: true, unique: true },
         password: { type: String },
-        role: { type: String, required: true, enum: ["Host", "Guest"], default: "Guest" },
+        role: { type: String, required: true, enum: ["Host", "Guest", "Admin"], default: "Guest" },
         accommodations: [{ type: Schema.Types.ObjectId, ref: "Accommodation", default: [] }],
         refreshToken: { type: String },
         googleOAuth: { type: String }
@@ -63,7 +24,7 @@ export interface User {
     email: string
     password?: string
     role: "Guest" | "Host" | "Admin"
-    accommodations?: Array<string>
+    accommodations?: Array<BaseAccommodations["_id"]>
     refreshToken?: string
     googleOAuth?: string
 }

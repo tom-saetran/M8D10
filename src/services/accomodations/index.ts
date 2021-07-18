@@ -21,7 +21,7 @@ accommodationsRouter.post("/", JWTAuthMiddleware, checkIfHost, async (req, res, 
         const entry = new AccommodationModel(req.body)
 
         if (await entry.save()) {
-            if (await UserModel.findByIdAndUpdate(entry.author, { $push: { blogs: entry._id } }, mongoOptions)) res.status(201).send(entry._id)
+            if (await UserModel.findByIdAndUpdate(entry.host, { $push: { accommodations: entry._id } }, mongoOptions)) res.status(201).send(entry._id)
             else next(createError(400, "Author ID is invalid"))
         } else next(createError(500, "Error saving data"))
     } catch (error) {
@@ -65,7 +65,7 @@ accommodationsRouter.delete("/:id", JWTAuthMiddleware, checkAccommodationEditPri
         else result = await AccommodationModel.findById(req.params.id)
 
         if (result) {
-            await UserModel.findByIdAndUpdate(result.author, { $pull: { blogs: req.params.id } }, { timestamps: false, useFindAndModify: false })
+            await UserModel.findByIdAndUpdate(result.host, { $pull: { accommodations: req.params.id } }, { timestamps: false, useFindAndModify: false })
 
             result.remove()
             res.send("Deleted")

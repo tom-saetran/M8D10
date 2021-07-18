@@ -19,8 +19,8 @@ export const checkUserEditPrivileges: Route = (req, res, next) => {
 
 export const checkAccommodationEditPrivileges: Route = async (req, res, next) => {
     const user = req.user as BaseUser
-    const { host } = await AccommodationModel.findById(req.params.id)
-    if (host.id === user._id) next()
+    const { host } = (await AccommodationModel.findById(req.params.id)) as any // <= oh no!
+    if (host._id === user._id) next()
     if (user.role === "Admin") next()
     else next(createError(403))
 }
